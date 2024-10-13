@@ -1,0 +1,88 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "sync.fullname" . }}
+  labels:
+    {{- include "sync.labels" . | nindent 4 }}
+spec:
+  serviceName: {{ include "sync.fullname" . }}-headless
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "sync.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "sync.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "sync.serviceAccountName" . }}
+      hostNetwork: true  # Not sure if we can correctly setup without this
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args: {{ .Values.args }}
+          ports:
+            - name: web
+              containerPort: 8384
+              protocol: TCP
+            - name: sync-tcp
+              containerPort: 22000
+              protocol: TCP
+            - name: sync-udp
+              containerPort: 22000
+              protocol: UDP
+            - name: lan-discovery
+              containerPort: 21027
+              protocol: UDP
+          volumeMounts:
+            - name: "{{ include "sync.fullname" . }}-data"
+              mountPath: /var/syncthing
+            - name: "{{ include "sync.fullname" . }}-config"
+              mountPath: /etc/syncthing
+              subPath: config.xml
+            - name: syncthing-tls
+              mountPath: /etc/syncthing/https-cert.pem
+              subPath: tls.crt
+            - name: syncthing-tls
+              mountPath: /etc/syncthing/https-key.pem
+              subPath: tls.key
+          livenessProbe:
+            {{- toYaml .Values.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.readinessProbe | nindent 12 }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+        - name: syncthing-tls
+          secret:
+            secretName: "{{ .Values.httpTLSSecretName }}"
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  volumeClaimTemplates:
+    - metadata:
+        name: "{{ include "sync.fullname" . }}-data"
+      spec:
+        {{- toYaml .Values.dataVolumeClaimTemplate | nindent 8 }}
+    - metadata:
+        name: "{{ include "sync.fullname" . }}-config"
+      spec:
+        {{- toYaml .Values.configVolumeClaimTemplate | nindent 8 }}

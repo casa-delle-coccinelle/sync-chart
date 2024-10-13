@@ -1,0 +1,185 @@
+{{- if .Values.backups.enabled }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "sync.fullname" . }}-local-store
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name:  {{ include "sync.fullname" . }}-local-store
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "sync.fullname" . }}-local-store
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "sync.fullname" . }}-local-store
+    namespace: {{ .Release.Namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "sync.fullname" . }}-local-store
+rules:
+  - apiGroups: [""]
+    resources:
+      - secrets
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - authorization.k8s.io
+    resources:
+      - selfsubjectrulesreviews
+    verbs:
+      - create
+---
+apiVersion: external-secrets.io/v1beta1
+kind: SecretStore
+metadata:
+  name: {{ include "sync.fullname" . }}-local
+spec:
+  provider:
+    kubernetes:
+      remoteNamespace: {{ .Release.Namespace }}
+      auth:
+        serviceAccount:
+          name: {{ include "sync.fullname" . }}-local-store
+      server:
+        caProvider:
+          type: ConfigMap
+          name: kube-root-ca.crt
+          key: ca.crt
+          namespace: {{ .Release.Namespace }}
+---
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: volsync-{{ include "sync.fullname" . }}-local-user
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: bitwarden-login
+    kind: ClusterSecretStore
+  target:
+    template:
+      type: Opaque
+      data:
+        user: "{{.BACKUP_USER}}"
+  data:
+    - secretKey: BACKUP_USER
+      remoteRef:
+        key: backup-{{ include "sync.fullname" . }}-local
+        property: username
+---
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: volsync-{{ include "sync.fullname" . }}-local-address
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: bitwarden-fields
+    kind: ClusterSecretStore
+  target:
+    template:
+      type: Opaque
+      data:
+        address: "{{.BACKUP_ADDRESS}}"
+  data:
+    - secretKey: BACKUP_ADDRESS
+      remoteRef:
+        key: backup-{{ include "sync.fullname" . }}-local
+        property: address
+---
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: volsync-{{ include "sync.fullname" . }}-local-key-pem
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: bitwarden-notes
+    kind: ClusterSecretStore
+  target:
+    template:
+      type: Opaque
+      data:
+        pem-key: "{{.BACKUP_KEY_PEM | quote}}"
+  data:
+    - secretKey: BACKUP_KEY_PEM
+      remoteRef:
+        key: backup-{{ include "sync.fullname" . }}-local
+---
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: volsync-{{ include "sync.fullname" . }}-local
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: local
+    kind: SecretStore
+  target:
+    template:
+      type: Opaque
+      data:
+        rclone.conf: |
+          [ssh]
+          type = sftp
+          host = {{.BACKUP_ADDRESS}}
+          user = {{.BACKUP_USER}}
+          key_pem = {{.BACKUP_KEY_PEM}}
+  data:
+    - secretKey: BACKUP_KEY_PEM
+      remoteRef:
+        key: volsync-{{ include "sync.fullname" . }}-local-key-pem
+        property: pem-key
+    - secretKey: BACKUP_ADDRESS
+      remoteRef:
+        key: volsync-{{ include "sync.fullname" . }}-local-address
+        property: address
+    - secretKey: BACKUP_USER
+      remoteRef:
+        key: volsync-{{ include "sync.fullname" . }}-local-user
+        property: user
+{{- required ".Values.backups.clusterName is mandatory when backups.enabled is true" .Values.backups.clusterName -}}
+{{- $releaseNamespace := .Release.Namespace -}}
+{{- $fullName := include "sync.fullname" . -}}
+{{- $clusterName := .Values.backups.clusterName -}}
+{{- $schedule := .Values.backups.schedule -}}
+{{- $replicas := .Values.replicaCount | int -}}
+{{- range $i, $ := until $replicas }}
+---
+apiVersion: volsync.backube/v1alpha1
+kind: ReplicationSource
+metadata:
+  name: "{{ $fullName }}-data-{{ $i }}"
+spec:
+  sourcePVC: "{{ $fullName }}-data-{{ $i }}"
+  trigger:
+    schedule: "{{ $schedule }}"
+  rclone:
+    rcloneConfigSection: "ssh"
+    rcloneDestPath: "/backups/{{ $clusterName }}/{{ $releaseNamespace }}/{{ $fullName }}-data-{{ $i }}"
+    rcloneConfig: "volsync-{{ $fullName }}-local"
+    copyMethod: Clone
+---
+apiVersion: volsync.backube/v1alpha1
+kind: ReplicationSource
+metadata:
+  name: "{{ $fullName }}-config-{{ $i }}"
+spec:
+  sourcePVC: "{{ $fullName }}-config-{{ $i }}"
+  trigger:
+    schedule: "{{ $schedule }}"
+  rclone:
+    rcloneConfigSection: "ssh"
+    rcloneDestPath: "/backups/{{ $clusterName }}/{{ $releaseNamespace }}/{{ $fullName }}-config-{{ $i }}"
+    rcloneConfig: "volsync-{{ $fullName }}-local"
+    copyMethod: Clone
+{{- end }}
+{{- end }}
