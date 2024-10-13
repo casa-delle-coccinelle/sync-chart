@@ -1,0 +1,113 @@
+---
+replicaCount: 1
+
+image:
+  repository: syncthing/syncthing
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: ""
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+podAnnotations: {}
+
+service:
+  type: LoadBalancer
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  hosts:
+    - host: chart-example.local
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls: []
+  #  - secretName: {{ .Values.httpTLSSecretName }}
+  #    hosts:
+  #      - chart-example.local
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+  # If you want multiple deploys:
+  # podAntiAffinity:
+  #   requiredDuringSchedulingIgnoredDuringExecution:
+  #     - labelSelector:
+  #         matchExpressions:
+  #           - key: app
+  #             operator: In
+  #             values:
+  #               - syncthing
+  #       topologyKey: "kubernetes.io/hostname"
+
+dataVolumeClaimTemplate:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 100Gi
+
+configVolumeClaimTemplate:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 1Gi
+
+httpTLSSecretName: ""
+
+syncthingArgs:
+  - "-no-browser"
+  - "-gui-address=0.0.0.0:8384"
+  - "-home=/var/syncthing"
+
+readinessProbe:
+  initialDelaySeconds: 5
+  periodSeconds: 15
+  timeoutSeconds: 10
+  failureThreshold: 3
+  exec:
+    command:
+      - "/bin/sh"
+      - "-c"
+      - "curl -fkLsS -m 2 http://127.0.0.1:8384/rest/noauth/health | grep OK || exit 1"
+livenessProbe:
+  exec:
+    command:
+      - "/bin/sh"
+      - "-c"
+      - "curl -fkLsS -m 2 http://127.0.0.1:8384/rest/noauth/health | grep OK || exit 1"
+  initialDelaySeconds: 10
+  periodSeconds: 30
+  timeoutSeconds: 10
+  failureThreshold: 3
+
+backups:
+  enabled: false
+  # clusterName is used as destination for the storage backups.
+  clusterName: ""
+  # Backup schedule
+  schedule: "0 6 * * *"
