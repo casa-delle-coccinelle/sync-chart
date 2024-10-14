@@ -111,3 +111,17 @@ backups:
   clusterName: ""
   # Backup schedule
   schedule: "0 6 * * *"
+  userRemoteRef:
+    key: ""  # remoteRef key for the external secret
+    property: "username" # remoteRef property for the external secret
+    store: "bitwarden-login"
+    kind: ClusterSecretStore # ClusterSecretStore or SecretStore
+  addressRemoteRef:
+    key: ""  # remoteRef key for the external secret
+    property: "address" # remoteRef property for the external secret
+    store: "bitwarden-fields"
+    kind: ClusterSecretStore # ClusterSecretStore or SecretStore
+  KeyRemoteRef:
+    key: ""  # remoteRef key for the external secret
+    store: "bitwarden-fields"
+    kind: ClusterSecretStore # ClusterSecretStore or SecretStore

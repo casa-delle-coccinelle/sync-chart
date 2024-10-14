@@ -62,18 +62,18 @@ metadata:
 spec:
   refreshInterval: 1h
   secretStoreRef:
-    name: bitwarden-login
-    kind: ClusterSecretStore
+    name: {{ .Values.backups.userRemoteRef.store }}
+    kind: {{ .Values.backups.userRemoteRef.kind }}
   target:
     template:
       type: Opaque
       data:
-        user: "{{.BACKUP_USER}}"
+        user: "{{`{{.BACKUP_USER}}`}}"
   data:
     - secretKey: BACKUP_USER
       remoteRef:
-        key: backup-{{ include "sync.fullname" . }}-local
-        property: username
+        key: {{ .Values.backups.userRemoteRef.key }}
+        property: {{ .Values.backups.userRemoteRef.property }}
 ---
 apiVersion: external-secrets.io/v1beta1
 kind: ExternalSecret
@@ -82,18 +82,18 @@ metadata:
 spec:
   refreshInterval: 1h
   secretStoreRef:
-    name: bitwarden-fields
-    kind: ClusterSecretStore
+    name: {{ .Values.backups.addressRemoteRef.store }}
+    kind: {{ .Values.backups.addressRemoteRef.kind }}
   target:
     template:
       type: Opaque
       data:
-        address: "{{.BACKUP_ADDRESS}}"
+        address: "{{`{{.BACKUP_ADDRESS}}`}}"
   data:
     - secretKey: BACKUP_ADDRESS
       remoteRef:
-        key: backup-{{ include "sync.fullname" . }}-local
-        property: address
+        key: {{ .Values.backups.addressRemoteRef.key }}
+        property: {{ .Values.backups.addressRemoteRef.property }}
 ---
 apiVersion: external-secrets.io/v1beta1
 kind: ExternalSecret
@@ -102,17 +102,17 @@ metadata:
 spec:
   refreshInterval: 1h
   secretStoreRef:
-    name: bitwarden-notes
-    kind: ClusterSecretStore
+    name: {{ .Values.backups.keyRemoteRef.store }}
+    kind: {{ .Values.backups.keyRemoteRef.kind }}
   target:
     template:
       type: Opaque
       data:
-        pem-key: "{{.BACKUP_KEY_PEM | quote}}"
+        pem-key: "{{`{{.BACKUP_KEY_PEM | quote}}`}}"
   data:
     - secretKey: BACKUP_KEY_PEM
       remoteRef:
-        key: backup-{{ include "sync.fullname" . }}-local
+        key: {{ .Values.backups.keyRemoteRef.key }}
 ---
 apiVersion: external-secrets.io/v1beta1
 kind: ExternalSecret
@@ -130,9 +130,9 @@ spec:
         rclone.conf: |
           [ssh]
           type = sftp
-          host = {{.BACKUP_ADDRESS}}
-          user = {{.BACKUP_USER}}
-          key_pem = {{.BACKUP_KEY_PEM}}
+          host = {{`{{.BACKUP_ADDRESS}}`}}
+          user = {{`{{.BACKUP_USER}}`}}
+          key_pem = {{`{{.BACKUP_KEY_PEM}}`}}
   data:
     - secretKey: BACKUP_KEY_PEM
       remoteRef:
