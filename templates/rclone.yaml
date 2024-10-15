@@ -121,7 +121,7 @@ metadata:
 spec:
   refreshInterval: 1h
   secretStoreRef:
-    name: local
+    name: {{ include "sync.fullname" . }}-local
     kind: SecretStore
   target:
     template:

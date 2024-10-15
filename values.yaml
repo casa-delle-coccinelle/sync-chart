@@ -123,5 +123,5 @@ backups:
     kind: ClusterSecretStore # ClusterSecretStore or SecretStore
   keyRemoteRef:
     key: ""  # remoteRef key for the external secret
-    store: "bitwarden-fields"
+    store: "bitwarden-notes"
     kind: ClusterSecretStore # ClusterSecretStore or SecretStore
