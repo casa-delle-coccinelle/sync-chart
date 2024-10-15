@@ -146,10 +146,9 @@ spec:
       remoteRef:
         key: volsync-{{ include "sync.fullname" . }}-local-user
         property: user
-{{- required ".Values.backups.clusterName is mandatory when backups.enabled is true" .Values.backups.clusterName -}}
+{{- $clusterName := required ".Values.backups.clusterName is mandatory when backups.enabled is true" .Values.backups.clusterName -}}
 {{- $releaseNamespace := .Release.Namespace -}}
 {{- $fullName := include "sync.fullname" . -}}
-{{- $clusterName := .Values.backups.clusterName -}}
 {{- $schedule := .Values.backups.schedule -}}
 {{- $replicas := .Values.replicaCount | int -}}
 {{- range $i, $ := until $replicas }}
