@@ -152,18 +152,20 @@ spec:
 {{- $schedule := .Values.backups.schedule -}}
 {{- $replicas := .Values.replicaCount | int -}}
 {{- range $i, $ := until $replicas }}
+{{- $configPVC := printf "%s-config-%s-%d" $fullName $fullName $i -}}
+{{- $dataPVC := printf "%s-data-%s-%d" $fullName $fullName $i -}}
 ---
 apiVersion: volsync.backube/v1alpha1
 kind: ReplicationSource
 metadata:
   name: "{{ $fullName }}-data-{{ $i }}"
 spec:
-  sourcePVC: "{{ $fullName }}-data-{{ $i }}"
+  sourcePVC: "{{ $dataPVC }}"
   trigger:
     schedule: "{{ $schedule }}"
   rclone:
     rcloneConfigSection: "ssh"
-    rcloneDestPath: "/backups/{{ $clusterName }}/{{ $releaseNamespace }}/{{ $fullName }}-data-{{ $i }}"
+    rcloneDestPath: "/backups/{{ $clusterName }}/{{ $releaseNamespace }}/{{$dataPVC}}"
     rcloneConfig: "volsync-{{ $fullName }}-local"
     copyMethod: Clone
 ---
@@ -172,12 +174,12 @@ kind: ReplicationSource
 metadata:
   name: "{{ $fullName }}-config-{{ $i }}"
 spec:
-  sourcePVC: "{{ $fullName }}-config-{{ $i }}"
+  sourcePVC: "{{ $configPVC }}"
   trigger:
     schedule: "{{ $schedule }}"
   rclone:
     rcloneConfigSection: "ssh"
-    rcloneDestPath: "/backups/{{ $clusterName }}/{{ $releaseNamespace }}/{{ $fullName }}-config-{{ $i }}"
+    rcloneDestPath: "/backups/{{ $clusterName }}/{{ $releaseNamespace }}/{{ $configPVC }}"
     rcloneConfig: "volsync-{{ $fullName }}-local"
     copyMethod: Clone
 {{- end }}
