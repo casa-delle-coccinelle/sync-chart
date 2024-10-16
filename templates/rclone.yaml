@@ -151,9 +151,9 @@ spec:
 {{- $fullName := include "sync.fullname" . -}}
 {{- $schedule := .Values.backups.schedule -}}
 {{- $replicas := .Values.replicaCount | int -}}
-{{- range $i, $ := until $replicas }}
+{{- range $i, $ := until $replicas -}}
 {{- $configPVC := printf "%s-config-%s-%d" $fullName $fullName $i -}}
-{{- $dataPVC := printf "%s-data-%s-%d" $fullName $fullName $i -}}
+{{- $dataPVC := printf "%s-data-%s-%d" $fullName $fullName $i }}
 ---
 apiVersion: volsync.backube/v1alpha1
 kind: ReplicationSource
